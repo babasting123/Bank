@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank DApp - Assignment</title>
+    <!-- นำเข้า Ethers.js สำหรับติดต่อกับ Smart Contract -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; color: #333; }
+        .container { max-width: 500px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .student-info { background: #e0f7fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .card { margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 15px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #45a049; }
+        input { padding: 8px; width: 60%; margin-right: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- แสดงรหัสและชื่อ-สกุล ตามโจทย์ -->
+    <div class="student-info">
+        <h3>ข้อมูลนักศึกษา</h3>
+        <p><strong>รหัสประจำตัว:</strong> 66036668</p>
+        <p><strong>ชื่อ-สกุล:</strong> อรรธพงษ์ พินนา</p>
+    </div>
+
+    <h2>Bank DApp System</h2>
+    <button id="connectWallet">เชื่อมต่อ MetaMask</button>
+    <p id="walletAddress" style="font-size: 14px; color: gray;"></p>
+
+    <hr>
+
+    <!-- Check Balance -->
+    <div class="card">
+        <h3>ตรวจสอบยอดเงิน (Check Balance)</h3>
+        <button onclick="checkBalance()">เช็คยอดเงิน</button>
+        <p>ยอดเงินคงเหลือ: <span id="balanceResult">0</span> ETH</p>
+    </div>
+
+    <!-- Deposit -->
+    <div class="card">
+        <h3>ฝากเงิน (Deposit)</h3>
+        <input type="text" id="depositAmount" placeholder="จำนวน ETH เช่น 0.01">
+        <button onclick="deposit()">ฝากเงิน</button>
+    </div>
+
+    <!-- Withdraw -->
+    <div class="card">
+        <h3>ถอนเงิน (Withdraw)</h3>
+        <input type="text" id="withdrawAmount" placeholder="จำนวน Wei เช่น 1000000000000000">
+        <button onclick="withdraw()">ถอนเงิน</button>
+    </div>
+</div>
+
+<script>
+    // Contract Address และ ABI ของคุณ
+    const CONTRACT_ADDRESS = "0xaf903b1945727c3a96D39DB95d350F78C71B8688";
+    const CONTRACT_ABI = [
+      {
+        "inputs": [],
+        "name": "deposit",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "Deposit",
+        "type": "event"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "withdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "Withdraw",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "checkBlance",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "balance",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
+
+    let provider;
+    let signer;
+    let contract;
+
+    // เชื่อมต่อ MetaMask
+    document.getElementById("connectWallet").onclick = async function() {
+        if (typeof window.ethereum !== "undefined") {
+            try {
+                await window.ethereum.request({ method: "eth_requestAccounts" });
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                const address = await signer.getAddress();
+                
+                document.getElementById("walletAddress").innerText = "Connected: " + address;
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                alert("เชื่อมต่อ MetaMask สำเร็จ!");
+            } catch (error) {
+                console.error(error);
+                alert("ผู้ใช้ปฏิเสธการเชื่อมต่อ");
+            }
+        } else {
+            alert("กรุณาติดตั้งส่วนขยาย MetaMask!");
+        }
+    };
+
+    // ฟังก์ชันเช็คยอดเงิน
+    async function checkBalance() {
+        if (!contract) { alert("กรุณาเชื่อมต่อ MetaMask ก่อน"); return; }
+        try {
+            const balance = await contract.checkBlance();
+            document.getElementById("balanceResult").innerText = ethers.utils.formatEther(balance);
+        } catch (error) {
+            console.error(error);
+            alert("เกิดข้อผิดพลาดในการดึงยอดเงิน");
+        }
+    }
+
+    // ฟังก์ชันฝากเงิน
+    async function deposit() {
+        if (!contract) { alert("กรุณาเชื่อมต่อ MetaMask ก่อน"); return; }
+        try {
+            const amountEth = document.getElementById("depositAmount").value;
+            const tx = await contract.deposit({ value: ethers.utils.parseEther(amountEth) });
+            alert("กำลังทำรายการฝาก กรุณารอยืนยันธุรกรรมใน MetaMask...");
+            await tx.wait();
+            alert("ฝากเงินสำเร็จ!");
+            checkBalance();
+        } catch (error) {
+            console.error(error);
+            alert("ฝากเงินไม่สำเร็จ: " + error.message);
+        }
+    }
+
+// ฟังก์ชันถอนเงิน (แก้ไขให้รองรับหน่วย ETH แล้วแปลงเป็น Wei อัตโนมัติ)
+    async function withdraw() {
+        if (!contract) { alert("กรุณาเชื่อมต่อ MetaMask ก่อน"); return; }
+        try {
+            const amountEth = document.getElementById("withdrawAmount").value; 
+            // แปลงค่าจาก ETH เป็น Wei ให้ถูกต้องตามหลัก BigNumber
+            const amountWei = ethers.utils.parseEther(amountEth);
+            
+            const tx = await contract.withdraw(amountWei);
+            alert("กำลังทำรายการถอน กรุณารอยืนยันธุรกรรมใน MetaMask...");
+            await tx.wait();
+            alert("ถอนเงินสำเร็จ!");
+            checkBalance();
+        } catch (error) {
+            console.error(error);
+            alert("ถอนเงินไม่สำเร็จ: " + error.message);
+        }
+    }
+</script>
+
+</body>
+</html>
